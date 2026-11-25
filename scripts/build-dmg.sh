@@ -19,7 +19,7 @@ DIST_DIR="${ROOT_DIR}/dist"
 DMG_PATH="${DIST_DIR}/Focus-Blocker.dmg"
 
 APP_NAME="Focus Blocker"
-BUNDLE_ID="com.nsrvel.focus-blocker"
+BUNDLE_ID="com.nsrvel.Focus-Blocker"
 
 command -v xcrun >/dev/null 2>&1 || { echo "Error: xcrun not found (install Xcode)." >&2; exit 1; }
 command -v xcodebuild >/dev/null 2>&1 || { echo "Error: xcodebuild not found (install Xcode)." >&2; exit 1; }
@@ -43,6 +43,28 @@ if [[ -z "${XCODEPROJ}" ]]; then
   exit 1
 fi
 
+SIGN_ARGS=()
+if [[ -n "${CODE_SIGN_IDENTITY:-}" && -n "${DEVELOPMENT_TEAM:-}" ]]; then
+  SIGN_ARGS=(
+    "DEVELOPMENT_TEAM=${DEVELOPMENT_TEAM}"
+    "CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}"
+    "CODE_SIGN_STYLE=Manual"
+  )
+else
+  DETECTED_NAME="$(security find-identity -v -p codesigning 2>/dev/null | sed -nE 's/.*"((Developer ID Application|Apple Development):[^"]*)".*/\1/p' | head -n 1 || true)"
+  if [[ -n "${DETECTED_NAME}" ]]; then
+    DETECTED_TEAM="$(security find-certificate -c "${DETECTED_NAME}" -p 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed -nE 's/.*OU=([^,\/]*).*/\1/p' | head -n 1 || true)"
+    if [[ -n "${DETECTED_TEAM}" ]]; then
+      echo "==> Using signing identity: ${DETECTED_NAME} (Team: ${DETECTED_TEAM})"
+      SIGN_ARGS=(
+        "DEVELOPMENT_TEAM=${DETECTED_TEAM}"
+        "CODE_SIGN_IDENTITY=${DETECTED_NAME}"
+        "CODE_SIGN_STYLE=Manual"
+      )
+    fi
+  fi
+fi
+
 echo "==> Building macOS app with xcodebuild..."
 xcodebuild \
   -project "${XCODEPROJ}" \
@@ -50,6 +72,7 @@ xcodebuild \
   -configuration Release \
   -derivedDataPath "${BUILD_DIR}/derived" \
   CONFIGURATION_BUILD_DIR="${EXPORT_DIR}" \
+  ${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"} \
   build
 
 APP_PATH="$(find "${EXPORT_DIR}" -maxdepth 2 -name "*.app" | head -n 1)"
