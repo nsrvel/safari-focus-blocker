@@ -1,0 +1,31 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||tiktok.com",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "regexSubstitution": "https://\\1youtube.com/watch?v=\\2"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.|m\\.)?youtube\\.com/shorts/([A-Za-z0-9_-]+)(?:[/?#].*)?$",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  }
+]
